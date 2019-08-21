@@ -6,6 +6,7 @@ import com.challenge.interfaces.Calculavel;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.util.List;
@@ -17,58 +18,30 @@ import java.util.stream.Stream;
 public class CalculadorDeClasses implements Calculavel {
 
     @Override
-    public BigDecimal somar(Object objSum) throws IllegalAccessException, InstantiationException {
-        if (objSum == null) {
-            return BigDecimal.ZERO;
-        }
-        Field[] declaredFields = objSum.getClass().getDeclaredFields();
-        List<Field> fieldList = Stream.of(declaredFields)
-                .filter(field -> field.getType().equals(BigDecimal.class))
-                .filter(field -> field.isAnnotationPresent(Somar.class))
-                .collect(Collectors.toList());
-        List<BigDecimal> bigDecimalList = fieldList.stream()
-                .map(field -> {
-                    try {
-                        field.setAccessible(true);
-                        BigDecimal obj = field.get(objSum) instanceof BigDecimal ? (BigDecimal) field.get(objSum) : BigDecimal.ZERO;
-                        return obj;
-                    } catch (IllegalAccessException e) {
-                        e.printStackTrace();
-                    }
-                    return BigDecimal.ZERO;
-
-                }).collect(Collectors.toList());
-        return bigDecimalList.stream().reduce(BigDecimal.ZERO, BigDecimal::add);
+    public BigDecimal somar(Object objSum){
+        return reduceValues(objSum,Somar.class);
     }
-
     @Override
     public BigDecimal subtrair(Object objSubtract) {
-        if (objSubtract == null) {
-            return BigDecimal.ZERO;
-        }
-        Field[] declaredFields = objSubtract.getClass().getDeclaredFields();
-        List<Field> fieldList = Stream.of(declaredFields)
-                .filter(field -> field.getType().equals(BigDecimal.class))
-                .filter(field -> field.isAnnotationPresent(Subtrair.class))
-                .collect(Collectors.toList());
-        List<BigDecimal> bigDecimalList = fieldList.stream()
-                .map(field -> {
+        return reduceValues(objSubtract,Subtrair.class);
+    }
+    private BigDecimal reduceValues(Object object, Class<? extends Annotation> clazz) {
+        return Stream.of(object.getClass().getDeclaredFields())
+                .filter(f -> f.isAnnotationPresent(clazz))
+                .map(f -> {
                     try {
-                        field.setAccessible(true);
-                        BigDecimal obj = field.get(objSubtract) instanceof BigDecimal ? (BigDecimal) field.get(objSubtract) : BigDecimal.ZERO;
-                        return obj;
+                        f.setAccessible(true);
+                        Object value = f.get(object);
+                        return value instanceof BigDecimal ? (BigDecimal) value : BigDecimal.ZERO;
                     } catch (IllegalAccessException e) {
                         e.printStackTrace();
                     }
                     return BigDecimal.ZERO;
-                }).collect(Collectors.toList());
-        return bigDecimalList.stream().reduce(BigDecimal.ZERO, BigDecimal::add);
+                }).reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     @Override
-    public BigDecimal totalizar(Object objTotalize) throws InstantiationException, IllegalAccessException {
-        if(objTotalize == null){return BigDecimal.ZERO;}
-        //Passo o objeto para a função de somar e também para a de subtrair.
+    public BigDecimal totalizar(Object objTotalize){
         return somar(objTotalize).subtract(subtrair(objTotalize));
     }
 }
